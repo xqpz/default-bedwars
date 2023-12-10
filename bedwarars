@@ -1,0 +1,387 @@
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class BedWarsPlugin extends JavaPlugin {
+
+    @Override
+    public void onEnable() {
+        getLogger().info("BedWarsPlugin has been enabled!");
+
+        // Регистрация команд для использования
+        getCommand("joinbedwars").setExecutor(new JoinBedWarsCommand());
+        getCommand("startbedwars").setExecutor(new StartBedWarsCommand());
+    }
+
+    @Override
+    public void onDisable() {
+        getLogger().info("BedWarsPlugin has been disabled!");
+    }
+
+    // Команда для присоединения игрока к игре BedWars
+    private class JoinBedWarsCommand implements CommandExecutor {
+        @Override
+        public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+            if (sender instanceof Player) {
+                Player player = (Player) sender;
+                player.sendMessage("You joined BedWars!");
+                return true;
+            } else {
+                sender.sendMessage("This command can only be executed by a player!");
+                return false;
+            }
+        }
+    }
+
+    // Команда для начала игры BedWars
+    private class StartBedWarsCommand implements CommandExecutor {
+        @Override
+        public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+            getServer().broadcastMessage("BedWars game has started!")
+            return true;
+        }
+    }
+} 
+
+
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class BedWarsShop extends JavaPlugin {
+
+    @Override
+    public void onEnable() {
+        getLogger().info("BedWarsShop has been enabled!");
+        // Регистрация команды для открытия магазина
+        getCommand("shop").setExecutor(new ShopCommand());
+    }
+
+    @Override
+    public void onDisable() {
+        getLogger().info("BedWarsShop has been disabled!");
+    }
+
+    // Команда для открытия магазина
+    private class ShopCommand implements org.bukkit.command.CommandExecutor {
+        @Override
+        public boolean onCommand(org.bukkit.command.CommandSender sender, org.bukkit.command.Command command, String label, String[] args) {
+            if (sender instanceof Player) {
+                openShop((Player) sender);
+                return true;
+            } else {
+                sender.sendMessage("This command can only be executed by a player!");
+                return false;
+            }
+        }
+    }
+
+    // Метод открытия магазина для игрока
+    private void openShop(Player player) {
+        Inventory shopInventory = getServer().createInventory(null, 9, "BedWars Shop"); // Создаем инвентарь магазина
+        
+        // Добавляем предметы в инвентарь магазина
+        shopInventory.setItem(0, createItem(Material.WOOL, "Wool", "Block for building"));
+        shopInventory.setItem(1, createItem(Material.SHEARS, "Shears", "Tool for gathering wool"));
+        shopInventory.setItem(2, createItem(Material.IRON_SWORD, "Sword", "Weapon for combat"));
+
+        player.openInventory(shopInventory); // Открываем инвентарь магазина для игрока
+    }
+
+    // Метод для создания предмета с заданными характеристиками
+    private ItemStack createItem(Material material, String name, String lore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(name);
+        meta.setLore(Collections.singletonList(lore));
+        item.setItemMeta(meta);
+        return item;
+    }
+}
+
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.entity.Item;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
+
+import java.util.Random;
+
+public class ResourceSpawner extends JavaPlugin {
+
+    @Override
+    public void onEnable() {
+        // Запуск задачи для генерации ресурсов через определенные интервалы времени
+        Bukkit.getScheduler().runTaskTimer(this, new ResourceSpawnTask(), 20 * 60, 20 * 60); // Генерация каждые 60 секунд (измените интервал по вашему желанию)
+    }
+
+    private class ResourceSpawnTask extends BukkitRunnable {
+        @Override
+        public void run() {
+            // Пример координат точек появления ресурсов на островах
+            Location ironSpawnLocation = new Location(Bukkit.getWorld("world"), 100, 70, -50);
+            Location emeraldSpawnLocation = new Location(Bukkit.getWorld("world"), -70, 70, 80);
+            Location diamondSpawnLocation = new Location(Bukkit.getWorld("world"), 30, 70, -20);
+
+            spawnResource(ironSpawnLocation, Material.IRON_INGOT);
+            spawnResource(emeraldSpawnLocation, Material.EMERALD);
+            spawnResource(diamondSpawnLocation, Material.DIAMOND);
+        }
+
+        private void spawnResource(Location location, Material material) {
+            Random random = new Random();
+            int amount = random.nextInt(3) + 1; // Генерация случайного количества ресурсов от 1 до 3
+
+            Item resourceItem = location.getWorld().dropItemNaturally(location, new org.bukkit.inventory.ItemStack(material, amount));
+            resourceItem.setPickupDelay(Integer.MAX_VALUE); // Делаем ресурсы невозможными для подбора игроками (можно изменить по вашему желанию)
+        }
+    }
+}
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class BedWarsMySQL extends JavaPlugin {
+
+    private Connection connection;
+
+    @Override
+    public void onEnable() {
+        getLogger().info("BedWarsMySQL has been enabled!");
+
+        // Установка соединения с базой данных
+        connectToDatabase();
+        
+        // Создание таблицы для хранения статистики, если она еще не существует
+        createStatisticsTable();
+    }
+
+    @Override
+    public void onDisable() {
+        getLogger().info("BedWarsMySQL has been disabled!");
+
+        // Закрытие соединения с базой данных при выключении сервера
+        if (connection != null) {
+            try {
+                connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    // Метод для соединения с базой данных MySQL
+    private void connectToDatabase() {
+        try {
+            String host = "localhost"; // Замените на IP-адрес или имя хоста вашей MySQL-базы
+            int port = 3306; // Порт MySQL
+            String database = "bedwars_stats"; // Имя вашей базы данных
+            String username = "username"; // Ваше имя пользователя для доступа к базе данных
+            String password = "password"; // Ваш пароль для доступа к базе данных
+
+            // Установка соединения с базой данных
+            connection = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + database, username, password);
+            getLogger().info("Connected to the database!");
+        } catch (SQLException e) {
+            getLogger().severe("Failed to connect to the database!");
+            e.printStackTrace();
+        }
+    }
+
+    // Метод для создания таблицы статистики (если она не существует)
+    private void createStatisticsTable() {
+        try {
+            PreparedStatement statement = connection.prepareStatement(
+                "CREATE TABLE IF NOT EXISTS bedwars_statistics (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY," +
+                "player_uuid VARCHAR(36) NOT NULL," +
+                "kills INT NOT NULL," +
+                "blocks_broken INT NOT NULL" +
+                ");"
+            );
+
+            statement.executeUpdate();
+            statement.close();
+            getLogger().info("BedWars statistics table created (if not exists)!");
+        } catch (SQLException e) {
+            getLogger().severe("Failed to create statistics table!");
+            e.printStackTrace();
+        }
+    }
+
+    // Пример метода для обновления статистики по убийствам игрока
+    public void updateKillsStatistic(String playerUUID, int newKills) {
+        try {
+            PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO bedwars_statistics (player_uuid, kills, blocks_broken) VALUES (?, ?, 0) " +
+                "ON DUPLICATE KEY UPDATE kills = ?;"
+            );
+
+            statement.setString(1, playerUUID);
+            statement.setInt(2, newKills);
+            statement.setInt(3, newKills);
+
+            statement.executeUpdate();
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Пример метода для обновления статистики по сломанным блокам игрока
+    public void updateBlocksBrokenStatistic(String playerUUID, int newBlocksBroken) {
+        try {
+            PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO bedwars_statistics (player_uuid, kills, blocks_broken) VALUES (?, 0, ?) " +
+                "ON DUPLICATE KEY UPDATE blocks_broken = ?;"
+            );
+
+            statement.setString(1, playerUUID);
+            statement.setInt(2, newBlocksBroken);
+            statement.setInt(3, newBlocksBroken);
+
+            statement.executeUpdate();
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Пример метода для получения статистики игрока
+    public void getPlayerStatistics(String playerUUID) {
+        try {
+            PreparedStatement statement = connection.prepareStatement(
+                "SELECT * FROM bedwars_statistics WHERE player_uuid = ?;"
+            );
+
+            statement.setString(1, playerUUID
+     }
+}
+
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scoreboard.DisplaySlot;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Score;
+import org.bukkit.scoreboard.Scoreboard;
+
+public class BedWarsScoreboard extends JavaPlugin {
+
+    @Override
+    public void onEnable() {
+        getLogger().info("BedWarsScoreboard has been enabled!");
+        // Вызов метода для создания скорборда у всех игроков
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            createScoreboard(player);
+        }
+    }
+
+    @Override
+    public void onDisable() {
+        getLogger().info("BedWarsScoreboard has been disabled!");
+    }
+
+    // Метод для создания скорборда для игрока
+    private void createScoreboard(Player player) {
+        Scoreboard scoreboard = Bukkit.getScoreboardManager().getNewScoreboard(); // Создание нового скорборда
+        Objective objective = scoreboard.registerNewObjective("bedwars", "dummy"); // Создание нового объекта (цели) для скорборда
+        objective.setDisplaySlot(DisplaySlot.SIDEBAR); // Установка места отображения скорборда
+
+        // Установка заголовка скорборда
+        objective.setDisplayName("BedWars Stats");
+
+        // Пример отображения количества убийств
+        Score kills = objective.getScore(Bukkit.getOfflinePlayer("Kills:"));
+        kills.setScore(0); // Устанавливаем начальное количество убийств (может быть заменено реальным значением)
+
+        player.setScoreboard(scoreboard); // Установка скорборда игроку
+    }
+
+    // Метод для обновления количества убийств на скорборде для игрока
+    public void updateKillsScoreboard(Player player, int newKills) {
+        Scoreboard scoreboard = player.getScoreboard();
+        Objective objective = scoreboard.getObjective("bedwars");
+
+        Score kills = objective.getScore(Bukkit.getOfflinePlayer("Kills:"));
+        kills.setScore(newKills); // Обновляем количество убийств на скорборде
+    }
+}
+
+
+
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.plugin.java.JavaPlugin;
+
+public class BedWarsLocations extends JavaPlugin {
+
+    private FileConfiguration config;
+
+    @Override
+    public void onEnable() {
+        getLogger().info("BedWarsLocations has been enabled!");
+
+        // Создание или загрузка конфигурационного файла
+        saveDefaultConfig();
+        config = getConfig();
+
+        // Сохранение локаций в конфигурационном файле
+        saveLocations();
+        
+        // Загрузка локаций из конфигурационного файла
+        loadLocations();
+    }
+
+    @Override
+    public void onDisable() {
+        getLogger().info("BedWarsLocations has been disabled!");
+    }
+
+    // Метод для сохранения локаций в конфигурационном файле
+    private void saveLocations() {
+        // Пример сохранения трех локаций в конфигурационный файл
+        config.set("locations.ironSpawn", locationToString(new Location(Bukkit.getWorld("world"), 100, 70, -50)));
+        config.set("locations.emeraldSpawn", locationToString(new Location(Bukkit.getWorld("world"), -70, 70, 80)));
+        config.set("locations.diamondSpawn", locationToString(new Location(Bukkit.getWorld("world"), 30, 70, -20)));
+
+        saveConfig();
+    }
+
+    // Метод для загрузки локаций из конфигурационного файла
+    private void loadLocations() {
+        // Пример загрузки трех локаций из конфигурационного файла
+        String ironSpawnString = config.getString("locations.ironSpawn");
+        Location ironSpawn = stringToLocation(ironSpawnString);
+
+        String emeraldSpawnString = config.getString("locations.emeraldSpawn");
+        Location emeraldSpawn = stringToLocation(emeraldSpawnString);
+
+        String diamondSpawnString = config.getString("locations.diamondSpawn");
+        Location diamondSpawn = stringToLocation(diamondSpawnString);
+
+        // Дальнейшее использование загруженных локаций (например, для BedWars)
+    }
+
+    // Методы преобразования Location в строку и наоборот
+    private String locationToString(Location location) {
+        return location.getWorld().getName() + "," + location.getX() + "," + location.getY() + "," + location.getZ();
+    }
+
+    private Location stringToLocation(String string) {
+        String[] parts = string.split(",");
+        return new Location(Bukkit.getWorld(parts[0]), Double.parseDouble(parts[1]), Double.parseDouble(parts[2]), Double.parseDouble(parts[3]));
+    }
